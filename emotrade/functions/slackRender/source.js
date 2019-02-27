@@ -1,19 +1,5 @@
 const MAX_NAME_LENGTH = 12;
 
-String.prototype.padStart = function(n, pad = ' ') {
-  const paddingValue = new Array(Math.max(n, this.length) + 1).join(pad);
-  return String(paddingValue + this).slice(-paddingValue.length);
-};
-
-String.prototype.padEnd = function(n, pad = ' ') {
-  const paddingValue = new Array(Math.max(n, this.length) + 1).join(pad);
-  return String(this + paddingValue).slice(0, paddingValue.length);
-};
-
-String.prototype.ellipsize = String.prototype.trunc || function(n) {
-  return (this.length > n) ? this.substr(0, n - 3) + '...' : this;
-};
-
 function commafy(num) {
   // Number.toLocaleString() and lookahead regexes don't work.
   var parts = (''+(num<0?-num:num)).split("."), s=parts[0], L, i=L= s.length, o='';
@@ -59,7 +45,7 @@ function renderHolding(h) {
     `x ${h.count}`,
     `@ ${renderChucklebucks(h.price)}`,
     '=',
-    `\$${h.total_value.toFixed(2)}`,
+    `$${h.total_value.toFixed(2)}`,
     '|',
     `${h.portfolio_percent.toFixed(1)}%`,
     '|',
@@ -110,6 +96,8 @@ function renderPortfolioBrief(p) {
 }
 
 exports = function(type, model) {
+  context.functions.execute('polyfills');
+
   const renderFunctions = {
     price: renderPrice,
     emoji: renderEmoji,

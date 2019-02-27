@@ -1,18 +1,20 @@
-exports = function(arg){
+exports = function() {
   const client = context.services.get('mongodb-atlas');
   const db = client.db('emojinomics');
   const collection = db.collection('trades');
   return collection.find({}, {
-      _id: 1,
-      user_id: 1,
-      cash_delta: 1,
-      count: 1,
-      emoji: 1,
-    })
+    _id: 1,
+    user_id: 1,
+    cash_delta: 1,
+    count: 1,
+    emoji: 1,
+  })
     .sort({user_id: 1, emoji: 1, timestamp: 1})
     .toArray()
     .then((trades) => {
-      let user, emoji, purchase_price;
+      let user;
+      let emoji;
+      let purchase_price;
       trades.map((trade) => {
         if (user !== trade.user_id) {
           user = trade.user_id;
@@ -37,7 +39,7 @@ exports = function(arg){
           $set: {
             buy_price,
             book_value_delta,
-          }
+          },
         }).then((result) => {
           console.log(JSON.stringify(result));
         });

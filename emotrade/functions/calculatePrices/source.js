@@ -2,9 +2,8 @@ const MINIMUM_STOCK_PRICE = 1;
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 const WINDOW_DURATION_MS = 4 * WEEK;
 
-
 function minPriceAgg(price) {
-    return {$max: [{$add: [1, price]}, MINIMUM_STOCK_PRICE]};
+  return {$max: [{$add: [1, price]}, MINIMUM_STOCK_PRICE]};
 }
 
 function timestampWithinRangeAgg(startMs, endMs) {
@@ -41,48 +40,35 @@ function decayForWeek(weekStart, decay) {
 }
 
 function priceAgg(whenMs) {
-  const windowStartMs = whenMs - WINDOW_DURATION_MS;
   const weeks = [
     1 * WEEK,
     2 * WEEK,
     3 * WEEK,
     4 * WEEK,
   ];
-  return sumInWindowAgg(whenMs, () => {
-    return {
-      $multiply: [
-        '$value',
-        decayForWeek(weeks[1], 0.75),
-        decayForWeek(weeks[2], 0.5),
-        decayForWeek(weeks[3], 0.25),
-/*
-        {$divide: [
-          {$max: [
-            {$subtract: [
-              '$timestamp',
-              windowStartMs,
-            ]},
-            0,
-          ]},
-          whenMs - windowStartMs,
-        ]},
-*/
-      ],
-    };
-  });
+  return sumInWindowAgg(whenMs, () => ({
+    $multiply: [
+      '$value',
+      decayForWeek(weeks[1], 0.75),
+      decayForWeek(weeks[2], 0.5),
+      decayForWeek(weeks[3], 0.25),
+    ],
+  }));
 }
 
 function countAgg(whenMs) {
   return sumInWindowAgg(whenMs, () => '$price');
 }
 
-exports = function({emojis, whenMs, changeSinceMs, changeSinceMsArray, $sort, $limit}) {
+exports = function({
+  emojis, whenMs, changeSinceMs, changeSinceMsArray, $sort, $limit,
+}) {
   const client = context.services.get('mongodb-atlas');
   const db = client.db('emojinomics');
   const collection = db.collection('reactions');
 
   const pipeline = [];
-  
+
   if (emojis !== undefined) {
     const $match = emojis.length === 1 ? {reaction: emojis[0]} : {$expr: {$in: ['$reaction', emojis]}};
     pipeline.push({$match});
@@ -96,14 +82,14 @@ exports = function({emojis, whenMs, changeSinceMs, changeSinceMsArray, $sort, $l
   const windowEndMs = Math.max(whenMs, changeSinceMs || whenMs);
   const $match = {$expr: timestampWithinRangeAgg(windowStartMs, windowEndMs)};
   pipeline.push({$match});
-  
-  $group = {
+
+  const $group = {
     _id: '$reaction',
     price: priceAgg(whenMs),
     count: countAgg(whenMs),
   };
 
-  $project = {
+  const $project = {
     _id: 0,
     emoji: '$_id',
     price: minPriceAgg('$price'),
@@ -118,18 +104,17 @@ exports = function({emojis, whenMs, changeSinceMs, changeSinceMsArray, $sort, $l
   }
 
   if (changeSinceMsArray !== undefined) {
-    for (let i in changeSinceMsArray) {
-      const sinceMs = changeSinceMsArray[i];
+    changeSinceMsArray.forEach((sinceMs, i) => {
       $group[`price_${i}`] = priceAgg(sinceMs);
       $group[`count_${i}`] = countAgg(sinceMs);
-      $project[`price_${i}`] = minPriceAgg(`\$price_${i}`);
-      $project[`count_${i}`] = 1;    
-    }
+      $project[`price_${i}`] = minPriceAgg(`$price_${i}`);
+      $project[`count_${i}`] = 1;
+    });
   }
-  
+
   pipeline.push({$group});
   pipeline.push({$project});
-  
+
   if (changeSinceMs !== undefined) {
     const $project2 = {
       emoji: 1,
@@ -150,16 +135,16 @@ exports = function({emojis, whenMs, changeSinceMs, changeSinceMsArray, $sort, $l
       price: 1,
       count: 1,
     };
-    for (let i in changeSinceMsArray) {
+    changeSinceMsArray.forEach((sinceMs, i) => {
       $project2[`price_${i}`] = 1;
       $project2[`count_${i}`] = 1;
-      $project2[`change_${i}`] = {$subtract: ['$price', `\$price_${i}`]};
-      $project2[`change_abs_${i}`] = {$abs: {$subtract: ['$price', `\$price_${i}`]}};
-      $project2[`change_percent_abs_${i}`] = {$abs: {$subtract: [{$divide: ['$price', `\$price_${i}`]}, 1]}};
-    }
+      $project2[`change_${i}`] = {$subtract: ['$price', `$price_${i}`]};
+      $project2[`change_abs_${i}`] = {$abs: {$subtract: ['$price', `$price_${i}`]}};
+      $project2[`change_percent_abs_${i}`] = {$abs: {$subtract: [{$divide: ['$price', `$price_${i}`]}, 1]}};
+    });
     pipeline.push({$project: $project2});
   }
-  
+
   if ($sort !== undefined) {
     pipeline.push({$sort});
   }
@@ -171,8 +156,8 @@ exports = function({emojis, whenMs, changeSinceMs, changeSinceMsArray, $sort, $l
   return collection
     .aggregate(pipeline)
     .toArray()
-    .then(results => new Promise((resolve, reject) => {
-      results.map(result => {
+    .then(results => new Promise((resolve) => {
+      results.forEach((result) => {
         result.price = Math.round(result.price * 100) / 100;
         if (changeSinceMs !== undefined) {
           result.previous_price = Math.round(result.previous_price * 100) / 100;
@@ -183,11 +168,11 @@ exports = function({emojis, whenMs, changeSinceMs, changeSinceMsArray, $sort, $l
           const change_percent = Math.round(result.change_percent_abs * 100) / 100;
           result.change_percent = change_percent;
         }
-        
+
         if (changeSinceMsArray !== undefined) {
           result.history = {};
-          for (let i in changeSinceMsArray) {
-            result.history[changeSinceMsArray[i]] = {
+          changeSinceMsArray.forEach((sinceMs, i) => {
+            result.history[sinceMs] = {
               price: Math.round(result[`price_${i}`] * 100) / 100,
               count: Math.round(result[`count_${i}`] * 100) / 100,
               change: Math.round(result[`change_${i}`] * 100) / 100,
@@ -201,7 +186,7 @@ exports = function({emojis, whenMs, changeSinceMs, changeSinceMsArray, $sort, $l
             delete result[`change_${i}`];
             delete result[`change_abs_${i}`];
             delete result[`change_percent_abs_${i}`];
-          }
+          });
         }
       });
       return resolve(results);
