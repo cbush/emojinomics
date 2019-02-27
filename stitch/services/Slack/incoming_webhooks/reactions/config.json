@@ -1,0 +1,11 @@
+{
+    "id": "5c6f8b40e82783560bd9af26",
+    "name": "reactions",
+    "run_as_user_id": "5c6f9422e82783560bda4e97",
+    "run_as_user_id_script_source": "",
+    "options": {
+        "httpMethod": "POST",
+        "validationMethod": "NO_VALIDATION"
+    },
+    "respond_result": true
+}

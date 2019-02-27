@@ -1,0 +1,22 @@
+{
+    "id": "5c6f9480e82783560bda558d",
+    "database": "emojinomics",
+    "collection": "reactions",
+    "roles": [
+        {
+            "name": "default",
+            "apply_when": {},
+            "write": true,
+            "insert": true,
+            "delete": true,
+            "additional_fields": {}
+        }
+    ],
+    "schema": {
+        "properties": {
+            "_id": {
+                "bsonType": "objectId"
+            }
+        }
+    }
+}

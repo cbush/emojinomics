@@ -1,0 +1,18 @@
+{
+    "id": "5c74a80d73b6ced4a4f00faf",
+    "name": "storePriceSnapshot",
+    "type": "DATABASE",
+    "config": {
+        "operation_types": [
+            "DELETE"
+        ],
+        "database": "emojinomics",
+        "collection": "ttl",
+        "service_name": "mongodb-atlas",
+        "match": {},
+        "full_document": true,
+        "unordered": false
+    },
+    "function_name": "ttlStorePriceSnapshot",
+    "disabled": false
+}

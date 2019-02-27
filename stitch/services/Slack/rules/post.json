@@ -1,0 +1,8 @@
+{
+    "id": "5c6f9ac53e1e1e27a836a1f3",
+    "name": "post",
+    "actions": [
+        "post",
+        "get"
+    ]
+}
