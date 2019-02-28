@@ -1,5 +1,4 @@
 function applyPricesToHoldings(holdings, valuations) {
-  console.log('applyPricesToHoldings');
   holdings.forEach((holding) => {
     const valuation = valuations.find(valuation => valuation.emoji === holding.emoji);
     holding.price = valuation.price;

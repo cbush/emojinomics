@@ -9,8 +9,8 @@ function minPriceAgg(price) {
 function timestampWithinRangeAgg(startMs, endMs) {
   return {
     $and: [
-      {$gte: ['$timestamp', startMs]},
-      {$gt: [endMs, '$timestamp']},
+      {$gte: ['$ts', startMs]},
+      {$gt: [endMs, '$ts']},
     ],
   };
 }
@@ -70,7 +70,7 @@ exports = function({
   const pipeline = [];
 
   if (emojis !== undefined) {
-    const $match = emojis.length === 1 ? {reaction: emojis[0]} : {$expr: {$in: ['$reaction', emojis]}};
+    const $match = emojis.length === 1 ? {emoji: emojis[0]} : {$expr: {$in: ['$emoji', emojis]}};
     pipeline.push({$match});
   }
 
@@ -84,7 +84,7 @@ exports = function({
   pipeline.push({$match});
 
   const $group = {
-    _id: '$reaction',
+    _id: '$emoji',
     price: priceAgg(whenMs),
     count: countAgg(whenMs),
   };

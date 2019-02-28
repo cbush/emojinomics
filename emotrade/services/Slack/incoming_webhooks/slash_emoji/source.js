@@ -279,9 +279,7 @@ function rank() {
     .then((portfoliosByUser) => {
       const portfolios = Object.values(portfoliosByUser);
 
-      portfolios.sort((a, b) => {
-        return b.net_worth - a.net_worth;
-      });
+      portfolios.sort((a, b) => b.net_worth - a.net_worth);
 
       return context.functions.execute('getUsers', {token: TOKEN})
         .then((usersById) => {
