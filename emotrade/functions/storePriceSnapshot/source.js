@@ -10,6 +10,8 @@ function coarsifyMs(ms) {
 }
 
 exports = function() {
+  return; // disabled for now
+
   const client = context.services.get('mongodb-atlas');
   const db = client.db('emojinomics');
   const collection = db.collection('prices');
