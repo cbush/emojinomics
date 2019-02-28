@@ -11,6 +11,10 @@ function renderPrice(model) {
   return context.functions.execute('slackRender', 'price', model);
 }
 
+function renderReactPower(model) {
+  return context.functions.execute('slackRender', 'reactPower', model);
+}
+
 function renderPortfolio(model) {
   return context.functions.execute('slackRender', 'portfolio', model);
 }
@@ -328,12 +332,33 @@ function price({query, command, args}) {
   const changeSinceMs = new Date().getTime() - 3 * 24 * 60 * 60 * 1000;
   return context.functions.execute('getPrices', {emojis: args.map(getEmojiName), changeSinceMs})
     .then((prices) => {
+      if (prices.length === 0) {
+        return {
+          type: 'ephemeral',
+          text: 'Emoji not found.',
+        };
+      }
       const views = prices.map(renderPrice).join('\n');
       return {
         type: 'ephemeral',
         text: views,
       };
     });
+}
+
+async function react_power({query, command, args}) {
+  if (args.length === 0) {
+    return {
+      type: 'ephemeral',
+      text:
+`*Usage*: ${query.command} ${command} <emoji...>`,
+    };
+  }
+  const powersByEmoji = await context.functions.execute('getReactPowersByEmoji', {emojis: args.map(getEmojiName)});
+  return {
+    type: 'ephemeral',
+    text: Object.values(powersByEmoji).map(renderReactPower).join('\n'),
+  };
 }
 
 function usage(command) {
@@ -380,6 +405,7 @@ exports = function(payload) {
   case 'price': return price({query, command, args});
   case 'buy': return buy({query, command, args});
   case 'sell': return sell({query, command, args});
+  case 'react-power': return react_power({query, command, args});
   default: return usage(query.command);
   }
   return usage(query.command);

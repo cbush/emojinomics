@@ -26,7 +26,7 @@ exports = async function(payload) {
     throw new Error(`Power for emoji ${emoji} undefined!`);
   }
 
-  let value = Math.round(type * power * 1000) / 1000;
+  let value = Math.round(type * power.value * 1000) / 1000;
 
   // Ignore events from the same user for the same reaction within the last 5 minutes.
   const ignoreDuration = 5 * 60 * 1000;

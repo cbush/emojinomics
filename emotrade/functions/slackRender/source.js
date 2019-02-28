@@ -21,6 +21,10 @@ function renderEmoji(emoji) {
   return `:${emoji}: \`${emoji.ellipsize(MAX_NAME_LENGTH).padEnd(MAX_NAME_LENGTH)}\``;
 }
 
+function renderReactPower(p) {
+  return `${renderEmoji(p.emoji)}: :fist: ${p.value}`;
+}
+
 function renderPrice(p) {
   const {change, change_percent} = p;
   const change_arrow = change >= 0.01 ? ':arrow_up_small::chart_with_upwards_trend:' : change > -0.01 ? ':arrow_right::equal:' : ':arrow_down_small::chart_with_downwards_trend:';
@@ -106,6 +110,7 @@ exports = function(type, model) {
     portfolio: renderPortfolio,
     portfolioBrief: renderPortfolioBrief,
     number: renderNumber,
+    reactPower: renderReactPower,
   };
   return renderFunctions[type](model);
 };
