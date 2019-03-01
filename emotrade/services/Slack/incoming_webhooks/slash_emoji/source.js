@@ -23,6 +23,10 @@ function renderPortfolioBrief(model) {
   return context.functions.execute('slackRender', 'portfolioBrief', model);
 }
 
+function renderTradeReceipt(model) {
+  return context.functions.execute('slackRender', 'tradeReceipt', model);
+}
+
 function getCurrentPrices(args) {
   const now = new Date().getTime();
   args.whenMs = now;
@@ -33,8 +37,8 @@ function getPortfolio(user_id) {
   return context.functions.execute('getPortfolio', user_id);
 }
 
-function getPortfoliosWithPrices(users) {
-  return context.functions.execute('getPortfoliosWithPrices', {users});
+function getPortfoliosWithPrices({team_id, users}) {
+  return context.functions.execute('getPortfoliosWithPrices', {team_id, users});
 }
 
 function portfolioResponse(portfolio) {
@@ -44,75 +48,19 @@ function portfolioResponse(portfolio) {
   };
 }
 
-function me({query}) {
+function me({query, team_id}) {
   const {user_id} = query;
-  return getPortfoliosWithPrices([user_id])
+  return getPortfoliosWithPrices({
+    users: [user_id],
+    team_id,
+  })
     .then(portfoliosByUser => portfolioResponse(portfoliosByUser[user_id]));
 }
 
-function makeTrade({
-  user_id, emoji, price, count, book_value,
-}) {
-  const collection = db.collection('trades');
-  book_value = count > 0 ? -price : -book_value;
-  return collection.insertOne({
-    user_id,
-    emoji,
-    count,
-    cash_delta: -count * price,
-    book_value_delta: -count * book_value,
-    buy_price: price,
-    timestamp: new Date().getTime(),
-  }).then(result => new Promise((resolve) => {
-    const tradeType = count < 0 ? 'SELL' : 'BUY';
-    const saleCount = Math.abs(count);
-    let profit = '';
-    if (count < 0) {
-      const change = saleCount * price - saleCount * -book_value;
-      const sign = change >= 0 ? '+' : '-';
-      const profitOrLoss = sign === '+' ? 'PROFIT :moneybag:' : 'LOSS :money_with_wings:';
-      profit = ` (${profitOrLoss} ${sign}$${Math.abs(change).toFixed(2)})`;
-    }
-    const slack = context.services.get('Slack');
-    slack.post({
-      url: SLACK_EMOTRADE_CHANNEL_URL,
-      body: {
-        text: `${tradeType} ${saleCount} x :${emoji}: ${emoji} @ $${price.toFixed(2)} = $${(price * saleCount).toFixed(2)}${profit}`,
-      },
-      encodeBodyAsJSON: true,
-    });
-    resolve(result);
-  }));
-}
-
-function tradeReceiptResponse({
-  count, emoji, price, cash, admonition,
-}) {
-  const saleCount = Math.abs(count);
-  const cashDeltaSign = count > 0 ? '-' : '+';
-  const tradeType = cashDeltaSign === '-' ? 'BUY' : 'SELL';
+function tradeReceiptResponse(receipt) {
   return {
     response_type: 'ephemeral',
-    text:
-`${admonition}${tradeType} ${saleCount} :${emoji}: ${emoji} @ $${price.toFixed(2)}
-\`prev. cash:\` $${cash.toFixed(2)}
-\`sale total:\` ${cashDeltaSign}$${(saleCount * price).toFixed(2)}
-\`curr. cash:\` $${(cash - count * price).toFixed(2)}
-`,
-  };
-}
-
-function emojiNotFoundResponse(emoji) {
-  return {
-    response_type: 'ephemeral',
-    text:
-`*Emoji not found:* '${emoji}'
-
-Hints:
-- make sure the emoji exists
-- use lowercase spelling
-- try reacting with it to register it in the market
-`,
+    text: renderTradeReceipt(receipt),
   };
 }
 
@@ -120,7 +68,9 @@ function getEmojiName(emoji) {
   return emoji.replace(/^:*([^:]+).*$/, '$1');
 }
 
-function buy({query, command, args}) {
+function trade({
+  query, command, args, team_id, app_id, action, dry_run,
+}) {
   const {user_id} = query;
 
   if (args.length !== 2) {
@@ -133,153 +83,41 @@ function buy({query, command, args}) {
   if (!isValidSaleCount(args[0])) {
     return {
       response_type: 'ephemeral',
-      text: `Error: Expected sale count to be a positive integer or 'all', got: ${args[0]}`,
+      text: `Error: Expected count to be a positive integer or 'all', got: ${args[0]}`,
     };
   }
 
-  if (args[0] === 'all') {
-    args[0] = 0;
-  }
+  const count = args[0] === 'all' ? 'all' : parseInt(args[0], 10);
 
-  let saleCount = parseInt(args[0], 10);
   const emoji = getEmojiName(args[1]);
 
-  return getCurrentPrices({emojis: [emoji]})
-    .then((prices) => {
-      if (prices.length === 0) {
-        return emojiNotFoundResponse(emoji);
-      }
-
-      const {price} = prices[0]
-      return getPortfolio(user_id)
-        .then((portfolio) => {
-          let currentlyHeld = 0;
-          const currentHolding = portfolio.holdings.find(holding => holding.emoji === emoji);
-          if (currentHolding !== undefined) {
-            currentlyHeld = currentHolding.count;
-          }
-
-          const canAffordCount = Math.floor(portfolio.cash / price);
-          let admonition = '';
-          if (saleCount === 0) { // special price for 'all'
-            admonition = `Buy all: you can afford ${canAffordCount}.\n\n`;
-            saleCount = canAffordCount;
-          } else if (saleCount > canAffordCount) {
-            admonition = `NOTE: You can only afford ${canAffordCount}.\n\n`;
-            saleCount = canAffordCount;
-          }
-
-          const personalCap = Math.max(0, 1000 - currentlyHeld);
-          if (personalCap === 0) {
-            return {
-              response_type: 'ephemeral',
-              text: `You already own too many :${emoji}: *${emoji}*: unit price of $${price.toFixed(2)}.`,
-            };
-          }
-          if (saleCount > personalCap) {
-            admonition += `NOTE: Limited to 1,000 shares per person. You have room for ${personalCap} more.`;
-            saleCount = personalCap;
-          }
-
-          if (saleCount === 0) {
-            return {
-              response_type: 'ephemeral',
-              text: `You can't afford any :${emoji}: *${emoji}*: unit price of $${price.toFixed(2)} exceeds available cash ($${portfolio.cash.toFixed(2)}).`,
-            };
-          }
-
-          return makeTrade({
-            user_id,
-            emoji,
-            count: saleCount,
-            price,
-          }).then(() => tradeReceiptResponse({
-            admonition,
-            emoji,
-            count: saleCount,
-            price,
-            cash: portfolio.cash,
-          }));
-        });
-    });
+  return context.functions.execute('trade', {
+    action,
+    app_id,
+    team_id,
+    user_id,
+    emoji,
+    count,
+    dry_run,
+  }).then(tradeReceiptResponse);
 }
 
-function sell({query, command, args}) {
-  const {user_id} = query;
-
-  if (args.length !== 2) {
-    return {
-      response_type: 'ephemeral',
-      text: `*Usage:* ${query.command} ${command} <all|#> <emoji>`,
-    };
-  }
-
-  if (!isValidSaleCount(args[0])) {
-    return {
-      response_type: 'ephemeral',
-      text: `Error: Expected sale count to be a positive integer or 'all', got: ${args[0]}`,
-    };
-  }
-
-  if (args[0] === 'all') {
-    args[0] = 0;
-  }
-
-  let saleCount = parseInt(args[0], 10);
-  const emoji = getEmojiName(args[1]);
-
-  return getCurrentPrices({emojis: [emoji]})
-    .then((prices) => {
-      if (prices.length === 0) {
-        return emojiNotFoundResponse(emoji);
-      }
-
-      const {price} = prices[0];
-      return getPortfolio(user_id)
-        .then((portfolio) => {
-          const {holdings} = portfolio;
-          const holding = holdings.find(holding => holding.emoji === emoji);
-          if (holding === undefined) {
-            return {
-              type: 'ephemeral',
-              text: `Can't sell: You don't own any :${emoji}: ${emoji}!`,
-            };
-          }
-          let admonition = '';
-          const canSellCount = holding.count;
-          if (saleCount === 0) { // special price for 'all'
-            admonition = `Sell all: you have ${canSellCount} to sell.\n\n`;
-            saleCount = canSellCount;
-          } else if (saleCount > canSellCount) {
-            admonition = `NOTE: You only have ${canSellCount} to sell.\n\n`;
-            saleCount = canSellCount;
-          }
-          if (saleCount === 0) {
-            return {
-              response_type: 'ephemeral',
-              text: 'You can\'t sell 0!',
-            };
-          }
-
-          return makeTrade({
-            user_id,
-            emoji,
-            count: -saleCount,
-            price,
-            book_value: Math.max(holding.book_value / holding.count, 0),
-          }).then(() => tradeReceiptResponse({
-            admonition,
-            emoji,
-            count: -saleCount,
-            price,
-            cash: portfolio.cash,
-          }));
-        });
-    });
+function buy(args) {
+  return trade({
+    ...args,
+    action: 'buy',
+  });
 }
 
-function rank() {
-  return getPortfoliosWithPrices()
+function sell(args) {
+  return trade({
+    ...args,
+    action: 'sell',
+  });
+}
+
+function rank({team_id}) {
+  return getPortfoliosWithPrices({team_id})
     .then((portfoliosByUser) => {
       const portfolios = Object.values(portfoliosByUser);
 
@@ -308,8 +146,8 @@ ${rankingsText}`,
     });
 }
 
-function list({args}) {
-  return context.functions.execute('getList', {name: args[0]})
+function list({team_id, args}) {
+  return context.functions.execute('getList', {team_id, name: args[0]})
     .then((list) => {
       const views = list.prices.map(renderPrice);
       return {
@@ -318,7 +156,10 @@ function list({args}) {
 `*Viewing list:* \`${list.name}\`
 ${views.join('\n')}`,
       };
-    });
+    }).catch(error => ({
+      type: 'ephemeral',
+      text: error.message,
+    }));
 }
 
 function price({query, command, args}) {
@@ -397,16 +238,23 @@ exports = function(payload) {
   client = context.services.get('mongodb-atlas');
   db = client.db('emojinomics');
 
+  const {team_id} = query;
+
   const command = args.shift();
+  const data = {
+    query,
+    command,
+    args,
+    team_id,
+  };
   switch (command) {
-  case 'me': return me({query, command, args});
-  case 'rank': return rank({query, command, args});
-  case 'list': return list({query, command, args});
-  case 'price': return price({query, command, args});
-  case 'buy': return buy({query, command, args});
-  case 'sell': return sell({query, command, args});
-  case 'react-power': return react_power({query, command, args});
+  case 'me': return me(data);
+  case 'rank': return rank(data);
+  case 'list': return list(data);
+  case 'price': return price(data);
+  case 'buy': return buy(data);
+  case 'sell': return sell(data);
+  case 'react-power': return react_power(data);
   default: return usage(query.command);
   }
-  return usage(query.command);
 };

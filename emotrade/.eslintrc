@@ -13,10 +13,11 @@
         "no-undef": ["warn"],
         "camelcase": ["off"],
         "no-param-reassign": ["warn"],
-        "space-before-function-paren": ["error", "never"],
+        "space-before-function-paren": ["off"],
         "prefer-destructuring": ["warn"],
         "no-shadow": ["warn"],
-        "max-len": ["warn"]
+        "max-len": ["warn"],
+        "no-restricted-properties": ["off"]
     },
     "extends": ["airbnb"]
 }

@@ -62,6 +62,7 @@ exports = function({users, whenMs, changeSinceMs}) {
     shares_traded: sumIfBeforeTimeAgg(whenMs, {$abs: '$count'}),
     cash_delta: sumIfBeforeTimeAgg(whenMs, '$cash_delta'),
     book_value: sumIfBeforeTimeAgg(whenMs, '$book_value_delta'),
+    fees_paid: sumIfBeforeTimeAgg(whenMs, '$fee_delta'),
     last_transaction: {$max: ifBeforeTimeAgg(whenMs, '$timestamp')},
   };
 
@@ -73,6 +74,7 @@ exports = function({users, whenMs, changeSinceMs}) {
     cash_delta: 1,
     last_transaction: 1,
     book_value: 1,
+    fees_paid: 1,
     user_id: '$_id.user_id',
     emoji: '$_id.emoji',
   };
@@ -84,12 +86,14 @@ exports = function({users, whenMs, changeSinceMs}) {
     $group.previous_cash_delta = sumIfBeforeTimeAgg(changeSinceMs, '$cash_delta');
     $group.previous_last_transaction = {$max: ifBeforeTimeAgg(changeSinceMs, '$timestamp')};
     $group.previous_book_value = sumIfBeforeTimeAgg(changeSinceMs, '$book_value_delta');
+    $group.previous_fees_paid = sumIfBeforeTimeAgg(changeSinceMs, '$fee_delta');
     $project.previous_count = 1;
     $project.previous_trade_count = 1;
     $project.previous_shares_traded = 1;
     $project.previous_cash_delta = 1;
     $project.previous_last_transaction = 1;
     $project.previous_book_value = 1;
+    $project.previous_fees_paid = 1;
   }
 
   pipeline.push({$group});

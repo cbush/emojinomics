@@ -40,20 +40,31 @@ function renderPrice(p) {
     `\$${p.price.toFixed(2)}`,
     `(${p.change_sign}${p.change_abs.toFixed(2)})`,
     `(${p.change_sign}${p.change_percent.toFixed(1)}%)`,
+    `${p.count} (${((p.count / 3000) * 100).toFixed(2)}%)`,
+  ].join(' ');
+}
+
+function renderEmojiCountAtPrice({
+  emoji, count, price,
+}) {
+  return [
+    renderEmoji(emoji),
+    `x ${count}`,
+    `@ ${renderChucklebucks(price)}`,
+    '=',
+    renderChucklebucks(count * price),
   ].join(' ');
 }
 
 function renderHolding(h) {
   return [
-    renderEmoji(h.emoji),
-    `x ${h.count}`,
-    `@ ${renderChucklebucks(h.price)}`,
-    '=',
-    `$${h.total_value.toFixed(2)}`,
+    renderEmojiCountAtPrice({emoji: h.emoji, count: h.count, price: h.price}),
     '|',
     `${h.portfolio_percent.toFixed(1)}%`,
     '|',
     `:book: ${renderChucklebucks(h.book_value)}`,
+    `- :money_mouth_face: ${renderChucklebucks(h.fees_paid || 0)}`,
+    `= ${renderChucklebucks(h.book_value - (h.fees_paid || 0))}`,
   ].join(' ');
 }
 
@@ -99,6 +110,19 @@ function renderPortfolioBrief(p) {
   ].join(' ');
 }
 
+function renderTradeReceipt(r) {
+  return [
+    ...r.notes,
+    `*Dry run:* ${r.dry_run ? 'yes' : 'no'}`,
+    `${r.action.toUpperCase()} ${renderEmojiCountAtPrice(r)}`,
+    '',
+    `:money_mouth_face: *Fees:* ${renderChucklebucks(r.fee)}`,
+    `:heavy_minus_sign: *Subtotal:* ${renderChucklebucks(r.count * r.price + r.fee)}`,
+    `:moneybag: *Cash:* ${renderChucklebucks(r.cash_before)} -> ${renderChucklebucks(r.cash_after)}`,
+    `*Holding:* ${r.holding_count_before} -> ${r.holding_count_after}`,
+  ].join('\n');
+}
+
 exports = function(type, model) {
   context.functions.execute('polyfills');
 
@@ -111,6 +135,7 @@ exports = function(type, model) {
     portfolioBrief: renderPortfolioBrief,
     number: renderNumber,
     reactPower: renderReactPower,
+    tradeReceipt: renderTradeReceipt,
   };
   return renderFunctions[type](model);
 };

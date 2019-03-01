@@ -1,10 +1,18 @@
 function applyPricesToHoldings(holdings, valuations) {
   holdings.forEach((holding) => {
     const valuation = valuations.find(valuation => valuation.emoji === holding.emoji);
-    holding.price = valuation.price;
-    holding.total_value = valuation.price * holding.count;
 
-    if (valuation.previous_price) {
+    let price = 0;
+    let previous_price;
+
+    if (valuation !== undefined) {
+      price = valuation.price;
+      previous_price = valuation.previous_price;
+    }
+    holding.price = price;
+    holding.total_value = price * holding.count;
+
+    if (previous_price !== undefined) {
       holding.previous_price = valuation.previous_price;
       holding.previous_total_value = valuation.previous_price * holding.previous_count;
     }
@@ -29,7 +37,12 @@ function applyPortfolioPercentToHoldings(holdings, portfolio) {
   });
 }
 
-function applyPricesToPortfolios({portfoliosByUser, whenMs, changeSinceMs}) {
+function applyPricesToPortfolios({
+  team_id,
+  portfoliosByUser,
+  whenMs,
+  changeSinceMs,
+}) {
   const emojisHeldMap = {};
   Object.values(portfoliosByUser).forEach((portfolio) => {
     portfolio.holdings.forEach((holding) => {
@@ -42,10 +55,11 @@ function applyPricesToPortfolios({portfoliosByUser, whenMs, changeSinceMs}) {
     whenMs = new Date().getTime(); // now
   }
   return context.functions.execute('getPrices', {
+    team_id,
     emojis: emojisHeld,
     whenMs,
     changeSinceMs,
-  }).then(valuations => new Promise((resolve) => {
+  }).then((valuations) => {
     Object.values(portfoliosByUser).forEach((portfolio) => {
       applyPricesToHoldings(portfolio.holdings, valuations);
       portfolio.net_worth = portfolio.cash + getHoldingsTotalValue(portfolio.holdings, h => h.total_value);
@@ -55,13 +69,18 @@ function applyPricesToPortfolios({portfoliosByUser, whenMs, changeSinceMs}) {
       }
       applyPortfolioPercentToHoldings(portfolio.holdings, portfolio);
     });
-    return resolve(portfoliosByUser);
-  }));
+    return portfoliosByUser;
+  });
 }
 
 exports = function(args) {
   context.functions.execute('polyfills');
-  const {whenMs, changeSinceMs} = args;
+  const {team_id, whenMs, changeSinceMs} = args;
   return context.functions.execute('getPortfolios', args)
-    .then(portfoliosByUser => applyPricesToPortfolios({portfoliosByUser, whenMs, changeSinceMs}));
+    .then(portfoliosByUser => applyPricesToPortfolios({
+      team_id,
+      portfoliosByUser,
+      whenMs,
+      changeSinceMs,
+    }));
 };
