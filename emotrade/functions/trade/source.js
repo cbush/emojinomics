@@ -27,7 +27,7 @@ async function makeTrade(trade) {
     cash_before,
     holding_count_before,
   } = trade;
-  console.log('makeTrade', count);
+
   const is_buy = action === 'buy'; // otherwise is_sell
 
   const holding_count_delta = is_buy ? count : -count;
@@ -41,6 +41,11 @@ async function makeTrade(trade) {
   // change in holding's previous fees
   const fee_delta = is_buy ? +fee : fee - (fees_paid / holding_count_before) * count;
 
+  let profit;
+  if (!is_buy) {
+    profit = count * price - count * book_value - fee - fees_paid;
+  }
+
   if (!dry_run && count > 0) {
     await collection.insertOne({
       user_id,
@@ -53,9 +58,9 @@ async function makeTrade(trade) {
       cash_delta,
       book_value_delta,
       fee_delta,
+      profit,
       ts: new Date().getTime(),
     });
-    console.log('done!');
   }
 
   trade.cash_after = cash_before + cash_delta;
@@ -71,7 +76,6 @@ async function makeTrade(trade) {
 }
 
 async function buy(trade) {
-  console.log('buy');
   const {
     cash_before,
     emoji,

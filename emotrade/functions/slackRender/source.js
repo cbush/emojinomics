@@ -56,6 +56,10 @@ function renderEmojiCountAtPrice({
   ].join(' ');
 }
 
+function renderFee(f) {
+  return `:money_mouth_face: ${renderChucklebucks(f)} fee`;
+}
+
 function renderHolding(h) {
   return [
     renderEmojiCountAtPrice({emoji: h.emoji, count: h.count, price: h.price}),
@@ -63,7 +67,7 @@ function renderHolding(h) {
     `${h.portfolio_percent.toFixed(1)}%`,
     '|',
     `:book: ${renderChucklebucks(h.book_value)}`,
-    `- :money_mouth_face: ${renderChucklebucks(h.fees_paid || 0)}`,
+    `- ${renderFee(h.fees_paid || 0)}`,
     `= ${renderChucklebucks(h.book_value - (h.fees_paid || 0))}`,
   ].join(' ');
 }
@@ -73,12 +77,28 @@ function renderHoldings(h) {
 }
 
 function renderTrade(t) {
+  const {emoji, count, fee} = t;
+  const action = count > 0 ? 'BUY' : 'SELL';
+  let profit;
+  if (t.profit !== undefined) {
+    if (t.profit < 0) {
+      profit = `(:money_with_wings: LOSS ${renderChucklebucks(t.profit)})`;
+    } else {
+      profit = `(:moneybag: PROFIT ${renderChucklebucks(t.profit)})`;
+    }
+  }
+  return [
+    action,
+    renderEmojiCountAtPrice({emoji, count: Math.abs(count), price: t.buy_price}),
+    `- ${renderFee(fee)}`,
+    profit,
+  ].join(' ');
 }
 
 function renderPortfolio(p) {
-  const cash = p.cash;
+  const {cash, fees_paid} = p;
   const holdingTexts = renderHoldings(p.holdings);
-  const portfolioText = holdingTexts.join('\n') || "<nothing yet>";
+  const portfolioText = holdingTexts.join('\n') || '<nothing yet>';
   const cashText = renderChucklebucks(cash);
   const netWorth = p.net_worth;
   const netWorthText = renderChucklebucks(netWorth);
@@ -87,6 +107,9 @@ ${netWorthText}
 
 *Chucklebucks cash holdings:*
 ${cashText}
+
+*Fees paid:*
+${renderChucklebucks(fees_paid)}
 
 *Portfolio:*
 ${portfolioText}

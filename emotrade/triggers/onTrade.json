@@ -1,0 +1,18 @@
+{
+    "id": "5c7dfd8ebc87cb0f2046a406",
+    "name": "onTrade",
+    "type": "DATABASE",
+    "config": {
+        "operation_types": [
+            "INSERT"
+        ],
+        "database": "emojinomics",
+        "collection": "trades",
+        "service_name": "mongodb-atlas",
+        "match": {},
+        "full_document": true,
+        "unordered": false
+    },
+    "function_name": "onTrade",
+    "disabled": false
+}
