@@ -1,10 +1,89 @@
 const MAX_NAME_LENGTH = 12;
 
+// from SO user esmiralha
+function hash(string) {
+  let hash = 0;
+  let i;
+  let chr;
+  if (string.length === 0) return hash;
+  for (i = 0; i < string.length; i++) {
+    chr = string.charCodeAt(i);
+    hash = ((hash << 5) - hash) + chr;
+    hash |= 0; // Convert to 32bit integer
+  }
+  return hash;
+}
+
 function commafy(num) {
   // Number.toLocaleString() and lookahead regexes don't work.
-  var parts = (''+(num<0?-num:num)).split("."), s=parts[0], L, i=L= s.length, o='';
-  while(i--){ o = (i===0?'':((L-i)%3?'':',')) +s.charAt(i) +o }
-  return (num<0?'-':'') + o + (parts[1] ? '.' + parts[1] : ''); 
+  const parts = (`${num < 0 ? -num : num}`).split('.'); const s = parts[0]; let L; let i = L = s.length; let
+    o = '';
+  while (i--) { o = (i === 0 ? '' : ((L - i) % 3 ? '' : ',')) + s.charAt(i) + o; }
+  return (num < 0 ? '-' : '') + o + (parts[1] ? `.${parts[1]}` : '');
+}
+
+function renderPseudonymizedUser(id) {
+  const icons = [
+    'cat',
+    'dog',
+    'mouse',
+    'hamster',
+    'rabbit',
+    'wolf',
+    'frog',
+    'tiger',
+    'koala',
+    'bear',
+    'pig',
+    'cow',
+    'boar',
+    'monkey',
+    'horse',
+    'racehorse',
+    'camel',
+    'sheep',
+    'elephant',
+    'panda_face',
+    'snake',
+    'bird',
+    'baby_chick',
+    'hatched_chick',
+    'hatching_chick',
+    'chicken',
+    'penguin',
+    'turtle',
+    'bug',
+    'honeybee',
+    'ant',
+    'beetle',
+    'snail',
+    'octopus',
+    'tropical_fish',
+    'fish',
+    'whale',
+    'whale2',
+    'dolphin',
+    'cow2',
+    'ram',
+    'rat',
+    'water_buffalo',
+    'tiger2',
+    'rabbit2',
+    'dragon',
+    'goat',
+    'rooster',
+    'dog2',
+    'pig2',
+    'mouse2',
+    'ox',
+    'blowfish',
+    'crocodile',
+    'dromedary_camel',
+    'leopard',
+    'cat2',
+    'poodle',
+  ];
+  return `:${icons[hash(id) % icons.length]}:`;
 }
 
 function renderNumber(n) {
@@ -30,10 +109,10 @@ function renderPrice(p) {
   const change_arrow = change >= 0.01 ? ':arrow_up_small::chart_with_upwards_trend:' : change > -0.01 ? ':arrow_right::equal:' : ':arrow_down_small::chart_with_downwards_trend:';
   const change_spice = change_percent > 50
     ? ':rotating_light:'
-      : change_percent > 25
-        ? ':fire:'
-          : change_percent > 10
-            ? ':hot_pepper:' : undefined;
+    : change_percent > 25
+      ? ':fire:'
+      : change_percent > 10
+        ? ':hot_pepper:' : undefined;
   return [
     `${renderEmoji(p.emoji)}`,
     `${change_arrow}${change_spice || ''}`,
@@ -56,10 +135,6 @@ function renderEmojiCountAtPrice({
   ].join(' ');
 }
 
-function renderFee(f) {
-  return `:money_mouth_face: ${renderChucklebucks(f)} fee`;
-}
-
 function renderHolding(h) {
   return [
     renderEmojiCountAtPrice({emoji: h.emoji, count: h.count, price: h.price}),
@@ -67,8 +142,6 @@ function renderHolding(h) {
     `${h.portfolio_percent.toFixed(1)}%`,
     '|',
     `:book: ${renderChucklebucks(h.book_value)}`,
-    `- ${renderFee(h.fees_paid || 0)}`,
-    `= ${renderChucklebucks(h.book_value - (h.fees_paid || 0))}`,
   ].join(' ');
 }
 
@@ -77,7 +150,7 @@ function renderHoldings(h) {
 }
 
 function renderTrade(t) {
-  const {emoji, count, fee} = t;
+  const {emoji, count} = t;
   const action = count > 0 ? 'BUY' : 'SELL';
   let profit;
   if (t.profit !== undefined) {
@@ -88,15 +161,15 @@ function renderTrade(t) {
     }
   }
   return [
-    action,
+    renderPseudonymizedUser(t.user_id),
+    `*${action}*`,
     renderEmojiCountAtPrice({emoji, count: Math.abs(count), price: t.buy_price}),
-    `- ${renderFee(fee)}`,
     profit,
   ].join(' ');
 }
 
 function renderPortfolio(p) {
-  const {cash, fees_paid} = p;
+  const {cash} = p;
   const holdingTexts = renderHoldings(p.holdings);
   const portfolioText = holdingTexts.join('\n') || '<nothing yet>';
   const cashText = renderChucklebucks(cash);
@@ -108,18 +181,13 @@ ${netWorthText}
 *Chucklebucks cash holdings:*
 ${cashText}
 
-*Fees paid:*
-${renderChucklebucks(fees_paid)}
-
 *Portfolio:*
 ${portfolioText}
 `;
 }
 
 function renderPortfolioBrief(p) {
-  p.holdings.sort((a, b) => {
-    return b.portfolio_percent - a.portfolio_percent;
-  });
+  p.holdings.sort((a, b) => b.portfolio_percent - a.portfolio_percent);
   let topEmoji = p.holdings.map(holding => `:${holding.emoji}: ${holding.portfolio_percent.toFixed(1)}%`);
   topEmoji = topEmoji.slice(0, 5);
   topEmoji = topEmoji.join(' ');
@@ -134,30 +202,40 @@ function renderPortfolioBrief(p) {
 }
 
 function renderTradeReceipt(r) {
+  let notes;
+  if (r.notes.length !== 0) {
+    notes = [
+      '*Note:*',
+      ...r.notes,
+      '',
+    ].join('\n');
+  }
   return [
-    ...r.notes,
-    `*Dry run:* ${r.dry_run ? 'yes' : 'no'}`,
+    notes,
     `${r.action.toUpperCase()} ${renderEmojiCountAtPrice(r)}`,
     '',
-    `:money_mouth_face: *Fees:* ${renderChucklebucks(r.fee)}`,
-    `:heavy_minus_sign: *Subtotal:* ${renderChucklebucks(r.count * r.price + r.fee)}`,
     `:moneybag: *Cash:* ${renderChucklebucks(r.cash_before)} -> ${renderChucklebucks(r.cash_after)}`,
     `*Holding:* ${r.holding_count_before} -> ${r.holding_count_after}`,
   ].join('\n');
+}
+
+function renderCrimeAlert(trade) {
+  return `:sleuth_or_spy::female-police-officer: *CRIME ALERT:* Trader ${renderPseudonymizedUser(trade.user_id)} got fined for insider trading!`;
 }
 
 exports = function(type, model) {
   context.functions.execute('polyfills');
 
   const renderFunctions = {
-    price: renderPrice,
+    crimeAlert: renderCrimeAlert,
     emoji: renderEmoji,
     holding: renderHolding,
-    trade: renderTrade,
+    number: renderNumber,
     portfolio: renderPortfolio,
     portfolioBrief: renderPortfolioBrief,
-    number: renderNumber,
+    price: renderPrice,
     reactPower: renderReactPower,
+    trade: renderTrade,
     tradeReceipt: renderTradeReceipt,
   };
   return renderFunctions[type](model);

@@ -1,0 +1,16 @@
+{
+    "id": "5c7e0e97f63f70a1617a7bf3",
+    "name": "rules",
+    "value": {
+        "GAIN_PER_REACT": {
+            "$numberDouble": "0.39"
+        },
+        "INSIDER_TRADING_THRESHOLD": {
+            "$numberDouble": "1.5"
+        },
+        "REACTS_CONSIDERED_IN_PRICE": {
+            "$numberInt": "5000"
+        }
+    },
+    "from_secret": false
+}

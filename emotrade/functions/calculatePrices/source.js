@@ -1,5 +1,5 @@
-const REACT_COUNT = 5000; // number of reacts considered in the price
-const GAIN_PER_REACT = 0.39; // react power
+let REACTS_CONSIDERED_IN_PRICE; // number of reacts considered in the price
+let GAIN_PER_REACT; // react power
 
 function priceAgg() {
   return {
@@ -10,7 +10,13 @@ function priceAgg() {
   };
 }
 
-exports = async function({team_id, emojis, $sort, $limit}) {
+exports = async function({
+  team_id, emojis, $sort, $limit,
+}) {
+  const rules = context.values.get('rules');
+  GAIN_PER_REACT = rules.GAIN_PER_REACT;
+  REACTS_CONSIDERED_IN_PRICE = rules.REACTS_CONSIDERED_IN_PRICE;
+
   const client = context.services.get('mongodb-atlas');
   const db = client.db('emojinomics');
   const collection = db.collection('reactions');
@@ -18,7 +24,7 @@ exports = async function({team_id, emojis, $sort, $limit}) {
   const pipeline = [
     {$match: {team_id}},
     {$sort: {team_id: 1, ts: -1}}, // not sure if team_id is needed to leverage index on sort
-    {$limit: REACT_COUNT}, // limit to max considerable reacts
+    {$limit: REACTS_CONSIDERED_IN_PRICE}, // limit to max considerable reacts
   ];
 
   if (emojis !== undefined) {
