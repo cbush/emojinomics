@@ -162,7 +162,7 @@ ${views.join('\n')}`,
     }));
 }
 
-function price({query, command, args}) {
+function price({team_id, query, command, args}) {
   if (args.length === 0) {
     return {
       type: 'ephemeral',
@@ -171,7 +171,7 @@ function price({query, command, args}) {
     };
   }
   const changeSinceMs = new Date().getTime() - 3 * 24 * 60 * 60 * 1000;
-  return context.functions.execute('getPrices', {emojis: args.map(getEmojiName), changeSinceMs})
+  return context.functions.execute('getPrices', {team_id, emojis: args.map(getEmojiName), changeSinceMs})
     .then((prices) => {
       if (prices.length === 0) {
         return {
