@@ -139,6 +139,19 @@ function renderFee(f) {
   return `:money_mouth_face: ${renderChucklebucks(f)}`;
 }
 
+function renderCrimeRisk(risk) {
+  if (risk === 0) {
+    return ':innocent:';
+  }
+  const display = [
+    ':sleuth_or_spy:',
+  ];
+  for (let i = risk; i > 0; i -= 0.25) {
+    display.push(':warning:');
+  }
+  return display.join('');
+}
+
 function renderHolding(h) {
   return [
     renderEmojiCountAtPrice({emoji: h.emoji, count: h.count, price: h.price}),
@@ -146,6 +159,8 @@ function renderHolding(h) {
     `${h.portfolio_percent.toFixed(1)}%`,
     '|',
     `:book: ${renderChucklebucks(h.book_value)}`,
+    '|',
+    renderCrimeRisk(h.crime_risk),
   ].join(' ');
 }
 

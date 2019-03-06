@@ -1,22 +1,22 @@
 const PER_TRADE_FEE_BUCKS = 5;
 
 function getInsiderTradingFine(trade) {
-  if (trade.action !== 'sell') {
+  const crime_probability = context.functions.execute('detectInsiderTrading', {
+    ...trade,
+    last_transaction: ((trade.holding && trade.holding.last_transaction) || undefined),
+  });
+  if (crime_probability === 0) {
     return 0;
   }
 
-  const {INSIDER_TRADING_THRESHOLD, GAIN_PER_REACT} = context.values.get('rules');
+  if (Math.random() > crime_probability) {
+    return 0;
+  }
 
-  const {price, book_value, count} = trade;
+  const {
+    price, book_value, count,
+  } = trade;
   const unit_profit = price - book_value;
-  if (unit_profit <= 0) {
-    return 0;
-  }
-
-  if (unit_profit > INSIDER_TRADING_THRESHOLD * GAIN_PER_REACT) {
-    return 0;
-  }
-
   return unit_profit * count;
 }
 
@@ -198,6 +198,7 @@ exports = function({
         const holding = holdings.find(h => h.emoji === emoji);
         trade.holding_count_before = (holding && holding.count) || 0;
         trade.book_value = (holding && (holding.book_value / holding.count)) || undefined;
+        trade.holding = holding;
 
         return command(trade);
       });

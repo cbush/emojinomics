@@ -1,5 +1,5 @@
 exports = function(changeEvent) {
-  const SLACK_EMOTRADE_CHANNEL_URL = context.values.get('slack').dev_channel_url;
+  const SLACK_EMOTRADE_CHANNEL_URL = context.values.get('slack').emotrade_channel_url;
 
   const trade = changeEvent.fullDocument;
   const slack = context.services.get('Slack');

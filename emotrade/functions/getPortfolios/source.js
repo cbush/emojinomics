@@ -22,7 +22,7 @@ function Portfolio(user_id, changeSinceMs) {
 function ifBeforeTimeAgg(whenMs, agg) {
   return {
     $cond: {
-      if: {$lte: ['$timestamp', whenMs]},
+      if: {$lte: ['$ts', whenMs]},
       then: agg,
       else: 0,
     },
@@ -53,7 +53,7 @@ exports = function({users, whenMs, changeSinceMs}) {
   pipeline.push({
     $match: {
       $expr: {
-        $lte: ['$timestamp', Math.max(whenMs, changeSinceMs || whenMs)],
+        $lte: ['$ts', Math.max(whenMs, changeSinceMs || whenMs)],
       },
     },
   });
@@ -68,7 +68,7 @@ exports = function({users, whenMs, changeSinceMs}) {
     fees_paid: sumIfBeforeTimeAgg(whenMs, '$fee'),
     fines_paid: sumIfBeforeTimeAgg(whenMs, '$fine'),
     profit: sumIfBeforeTimeAgg(whenMs, '$profit'),
-    last_transaction: {$max: ifBeforeTimeAgg(whenMs, '$timestamp')},
+    last_transaction: {$max: ifBeforeTimeAgg(whenMs, '$ts')},
   };
 
   const $project = {
@@ -91,7 +91,7 @@ exports = function({users, whenMs, changeSinceMs}) {
     $group.previous_trade_count = sumIfBeforeTimeAgg(changeSinceMs, 1);
     $group.previous_shares_traded = sumIfBeforeTimeAgg(changeSinceMs, {$abs: '$count'});
     $group.previous_cash_delta = sumIfBeforeTimeAgg(changeSinceMs, '$cash_delta');
-    $group.previous_last_transaction = {$max: ifBeforeTimeAgg(changeSinceMs, '$timestamp')};
+    $group.previous_last_transaction = {$max: ifBeforeTimeAgg(changeSinceMs, '$ts')};
     $group.previous_book_value = sumIfBeforeTimeAgg(changeSinceMs, '$book_value_delta');
     $project.previous_count = 1;
     $project.previous_trade_count = 1;

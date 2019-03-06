@@ -1,3 +1,13 @@
+function applyCrimeRiskToValuatedHoldings(holdings) {
+  holdings.forEach((holding) => {
+    holding.crime_risk = context.functions.execute('detectInsiderTrading', {
+      ...holding,
+      book_value: holding.book_value / holding.count,
+      action: 'sell',
+    });
+  });
+}
+
 function applyPricesToHoldings(holdings, valuations) {
   holdings.forEach((holding) => {
     const valuation = valuations.find(valuation => valuation.emoji === holding.emoji);
@@ -62,6 +72,7 @@ function applyPricesToPortfolios({
   }).then((valuations) => {
     Object.values(portfoliosByUser).forEach((portfolio) => {
       applyPricesToHoldings(portfolio.holdings, valuations);
+      applyCrimeRiskToValuatedHoldings(portfolio.holdings);
       portfolio.net_worth = portfolio.cash + getHoldingsTotalValue(portfolio.holdings, h => h.total_value);
 
       if (changeSinceMs !== undefined) {
