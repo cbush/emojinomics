@@ -17,7 +17,8 @@
         "prefer-destructuring": ["warn"],
         "no-shadow": ["warn"],
         "max-len": ["warn"],
-        "no-restricted-properties": ["off"]
+        "no-restricted-properties": ["off"],
+        "yoda": ["off"]
     },
     "extends": ["airbnb"]
 }

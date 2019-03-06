@@ -51,6 +51,13 @@ async function makeTrade(trade) {
   // change in holding's book value
   const book_value_delta = count * (is_buy ? price : -book_value);
 
+  trade.cash_after = cash_before + (count === 0 ? 0 : cash_delta);
+  trade.holding_count_after = holding_count_before + holding_count_delta;
+
+  if (count === 0) {
+    return trade;
+  }
+
   const document = {
     user_id,
     team_id,
@@ -66,8 +73,10 @@ async function makeTrade(trade) {
 
   const fine = getInsiderTradingFine(trade);
   if (fine) {
+    trade.crime = true;
+    trade.fine = fine;
     document.crime = true;
-    document.fine = Math.max(0, fine - fee);
+    document.fine = fine;
     notes.push(':sleuth_or_spy::female-police-officer: The SEC suspects you of insider trading and fines away all of your profit!');
   }
 
@@ -83,9 +92,6 @@ async function makeTrade(trade) {
   if (!dry_run && count > 0) {
     await collection.insertOne(document);
   }
-
-  trade.cash_after = cash_before + cash_delta;
-  trade.holding_count_after = holding_count_before + holding_count_delta;
 
   return trade;
 }
