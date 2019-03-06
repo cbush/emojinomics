@@ -1,30 +1,26 @@
-function detectInsiderTrading(trade) {
+const PER_TRADE_FEE_BUCKS = 5;
+
+function getInsiderTradingFine(trade) {
   if (trade.action !== 'sell') {
-    return false;
+    return 0;
   }
 
   const {INSIDER_TRADING_THRESHOLD, GAIN_PER_REACT} = context.values.get('rules');
 
-  const {price, book_value} = trade;
+  const {price, book_value, count} = trade;
   const unit_profit = price - book_value;
   if (unit_profit <= 0) {
-    return false;
+    return 0;
   }
 
   if (unit_profit > INSIDER_TRADING_THRESHOLD * GAIN_PER_REACT) {
-    return false;
+    return 0;
   }
 
-  return true;
+  return unit_profit * count;
 }
 
 async function makeTrade(trade) {
-  const crime = detectInsiderTrading(trade);
-
-  if (crime) {
-    trade.price = trade.book_value;
-  }
-
   const client = context.services.get('mongodb-atlas');
   const db = client.db('emojinomics');
   const collection = db.collection('trades');
@@ -35,6 +31,7 @@ async function makeTrade(trade) {
     team_id,
     app_id,
     emoji,
+    fee,
     count,
     price,
     book_value,
@@ -49,7 +46,7 @@ async function makeTrade(trade) {
   const holding_count_delta = is_buy ? count : -count;
 
   // change in chucklebucks cash holdings
-  const cash_delta = -holding_count_delta * price;
+  const cash_delta = -holding_count_delta * price - fee;
 
   // change in holding's book value
   const book_value_delta = count * (is_buy ? price : -book_value);
@@ -63,20 +60,25 @@ async function makeTrade(trade) {
     buy_price: price, // unit price paid
     cash_delta,
     book_value_delta,
+    fee,
     ts: new Date().getTime(),
   };
 
-  if (crime) {
+  const fine = getInsiderTradingFine(trade);
+  if (fine) {
     document.crime = true;
+    document.fine = Math.max(0, fine - fee);
     notes.push(':sleuth_or_spy::female-police-officer: The SEC suspects you of insider trading and fines away all of your profit!');
   }
 
-  if (!is_buy) {
-    const bought_at = count * price;
-    const sold_for = count * book_value;
-    trade.profit = bought_at - sold_for;
-    document.profit = trade.profit;
+  if (is_buy) {
+    trade.profit = -fee;
+  } else {
+    const bought_at = count * book_value;
+    const sold_for = count * price - fee;
+    trade.profit = sold_for - bought_at - fine;
   }
+  document.profit = trade.profit;
 
   if (!dry_run && count > 0) {
     await collection.insertOne(document);
@@ -97,10 +99,10 @@ async function buy(trade) {
   } = trade;
   let count = trade.requested_count;
 
-  const can_afford = Math.max(0, Math.floor(cash_before / price));
+  const can_afford = Math.max(0, Math.floor((cash_before - PER_TRADE_FEE_BUCKS) / price));
 
   if (can_afford === 0) {
-    notes.push(`You can't afford any :${emoji}: *${emoji}*: @ $${price.toFixed(2)} exceeds available cash ($${cash_before.toFixed(2)}).`);
+    notes.push(`You can't afford any :${emoji}: *${emoji}*: @ $${price.toFixed(2)} (with fee of $${PER_TRADE_FEE_BUCKS.toFixed(2)}) exceeds available cash ($${cash_before.toFixed(2)}).`);
     count = 0;
   } else if (count === 'all') {
     notes.push(`Buy all: you can afford ${can_afford}.`);
@@ -111,6 +113,7 @@ async function buy(trade) {
   }
 
   trade.count = count;
+  trade.fee = PER_TRADE_FEE_BUCKS;
   return makeTrade(trade);
 }
 
@@ -130,7 +133,14 @@ async function sell(trade) {
     count = can_sell;
   }
 
+  const cash_after_sale = trade.cash_before + count * trade.price - PER_TRADE_FEE_BUCKS;
+  if (cash_after_sale < 0) {
+    count = 0;
+    notes.push(`You can't afford the trade fee of $${PER_TRADE_FEE_BUCKS.toFixed(2)}.`);
+  }
+
   trade.count = count;
+  trade.fee = PER_TRADE_FEE_BUCKS;
 
   return makeTrade(trade);
 }

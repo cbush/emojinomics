@@ -9,7 +9,7 @@ function hash(string) {
   for (i = 0; i < string.length; i++) {
     chr = string.charCodeAt(i);
     hash = ((hash << 5) - hash) + chr;
-    hash |= 0; // Convert to 32bit integer
+    hash = parseInt(hash % Math.pow(2, 31), 10);
   }
   return hash;
 }
@@ -135,6 +135,10 @@ function renderEmojiCountAtPrice({
   ].join(' ');
 }
 
+function renderFee(f) {
+  return `:money_mouth_face: ${renderChucklebucks(f)}`;
+}
+
 function renderHolding(h) {
   return [
     renderEmojiCountAtPrice({emoji: h.emoji, count: h.count, price: h.price}),
@@ -150,10 +154,12 @@ function renderHoldings(h) {
 }
 
 function renderTrade(t) {
-  const {emoji, count} = t;
+  const {
+    emoji, count, fee,
+  } = t;
   const action = count > 0 ? 'BUY' : 'SELL';
   let profit;
-  if (t.profit !== undefined) {
+  if (action === 'SELL') {
     if (t.profit < 0) {
       profit = `(:money_with_wings: LOSS ${renderChucklebucks(t.profit)})`;
     } else {
@@ -164,24 +170,36 @@ function renderTrade(t) {
     renderPseudonymizedUser(t.user_id),
     `*${action}*`,
     renderEmojiCountAtPrice({emoji, count: Math.abs(count), price: t.buy_price}),
+    `- ${renderFee(fee)}`,
     profit,
   ].join(' ');
 }
 
 function renderPortfolio(p) {
-  const {cash} = p;
+  const {
+    cash, fees_paid, fines_paid, profit,
+  } = p;
   const holdingTexts = renderHoldings(p.holdings);
   const portfolioText = holdingTexts.join('\n') || '<nothing yet>';
   const cashText = renderChucklebucks(cash);
   const netWorth = p.net_worth;
   const netWorthText = renderChucklebucks(netWorth);
-  return `*Net worth:*
+  return `*:chart_with_upwards_trend: Net worth:*
 ${netWorthText}
 
-*Chucklebucks cash holdings:*
+*:money_with_wings: All-time profits:*
+${renderChucklebucks(profit)}
+
+*:moneybag: Chucklebucks cash holdings:*
 ${cashText}
 
-*Portfolio:*
+*:money_mouth_face: Unrecouped fees:*
+${renderChucklebucks(Math.max(0, fees_paid - Math.max(0, profit)))}
+
+*:female-police-officer: Fines paid:*
+${renderChucklebucks(fines_paid)}
+
+*:books: Positions:*
 ${portfolioText}
 `;
 }
@@ -202,6 +220,7 @@ function renderPortfolioBrief(p) {
 }
 
 function renderTradeReceipt(r) {
+  const {fee} = r;
   let notes;
   if (r.notes.length !== 0) {
     notes = [
@@ -214,13 +233,15 @@ function renderTradeReceipt(r) {
     notes,
     `${r.action.toUpperCase()} ${renderEmojiCountAtPrice(r)}`,
     '',
+    `:money_mouth_face: *Fees:* ${renderChucklebucks(fee)}`,
+    `:heavy_minus_sign: *Subtotal:* ${renderChucklebucks(r.count * r.price - fee)}`,
     `:moneybag: *Cash:* ${renderChucklebucks(r.cash_before)} -> ${renderChucklebucks(r.cash_after)}`,
     `*Holding:* ${r.holding_count_before} -> ${r.holding_count_after}`,
   ].join('\n');
 }
 
 function renderCrimeAlert(trade) {
-  return `:sleuth_or_spy::female-police-officer: *CRIME ALERT:* Trader ${renderPseudonymizedUser(trade.user_id)} got fined for insider trading!`;
+  return `:sleuth_or_spy::female-police-officer: *CRIME ALERT:* Trader ${renderPseudonymizedUser(trade.user_id)} got fined ${renderChucklebucks(trade.fine)} for insider trading!`;
 }
 
 exports = function(type, model) {
