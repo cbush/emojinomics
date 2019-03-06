@@ -9,7 +9,7 @@ function hash(string) {
   for (i = 0; i < string.length; i++) {
     chr = string.charCodeAt(i);
     hash = ((hash << 5) - hash) + chr;
-    hash = parseInt(hash % Math.pow(2, 31), 10);
+    hash = Math.abs(parseInt(hash % Math.pow(2, 31), 10));
   }
   return hash;
 }
@@ -241,7 +241,7 @@ function renderTradeReceipt(r) {
 }
 
 function renderCrimeAlert(trade) {
-  return `:sleuth_or_spy::female-police-officer: *CRIME ALERT:* Trader ${renderPseudonymizedUser(trade.user_id)} got fined ${renderChucklebucks(trade.fine)} for insider trading!`;
+  return `:sleuth_or_spy::female-police-officer: *CRIME ALERT:* Trader ${renderPseudonymizedUser(trade.user_id)} got fined for insider trading!`;
 }
 
 exports = function(type, model) {
