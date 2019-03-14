@@ -1,23 +1,3 @@
-function getInsiderTradingFine(trade) {
-  const crime_probability = context.functions.execute('detectInsiderTrading', {
-    ...trade,
-    last_transaction: ((trade.holding && trade.holding.last_transaction) || undefined),
-  });
-  if (crime_probability === 0) {
-    return 0;
-  }
-
-  if (Math.random() > crime_probability) {
-    return 0;
-  }
-
-  const {
-    price, book_value, count,
-  } = trade;
-  const unit_profit = price - book_value;
-  return unit_profit * count;
-}
-
 async function makeTrade(trade) {
   const client = context.services.get('mongodb-atlas');
   const db = client.db('emojinomics');
@@ -67,19 +47,10 @@ async function makeTrade(trade) {
     ts: new Date().getTime(),
   };
 
-  const fine = getInsiderTradingFine(trade);
-  if (fine) {
-    trade.crime = true;
-    trade.fine = fine;
-    document.crime = true;
-    document.fine = fine;
-    notes.push(':sleuth_or_spy::female-police-officer: The SEC suspects you of insider trading and fines away all of your profit!');
-  }
-
   if (!is_buy) {
     const bought_at = count * book_value;
     const sold_for = count * price;
-    trade.profit = sold_for - bought_at - fine;
+    trade.profit = sold_for - bought_at;
   }
   document.profit = trade.profit;
 

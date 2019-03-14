@@ -7,8 +7,6 @@ function Portfolio(user_id, changeSinceMs) {
   this.trade_count = 0;
   this.shares_traded = 0;
   this.last_transaction = null;
-  this.fees_paid = 0;
-  this.fines_paid = 0;
   this.profit = 0;
 
   if (changeSinceMs !== undefined) {
@@ -65,8 +63,6 @@ exports = function({users, whenMs, changeSinceMs}) {
     shares_traded: sumIfBeforeTimeAgg(whenMs, {$abs: '$count'}),
     cash_delta: sumIfBeforeTimeAgg(whenMs, '$cash_delta'),
     book_value: sumIfBeforeTimeAgg(whenMs, '$book_value_delta'),
-    fees_paid: sumIfBeforeTimeAgg(whenMs, '$fee'),
-    fines_paid: sumIfBeforeTimeAgg(whenMs, '$fine'),
     profit: sumIfBeforeTimeAgg(whenMs, '$profit'),
     last_transaction: {$max: ifBeforeTimeAgg(whenMs, '$ts')},
   };
@@ -79,8 +75,6 @@ exports = function({users, whenMs, changeSinceMs}) {
     cash_delta: 1,
     last_transaction: 1,
     book_value: 1,
-    fees_paid: 1,
-    fines_paid: 1,
     profit: 1,
     user_id: '$_id.user_id',
     emoji: '$_id.emoji',
@@ -125,8 +119,6 @@ exports = function({users, whenMs, changeSinceMs}) {
         userPortfolio.trade_count += holding.trade_count;
         userPortfolio.shares_traded += holding.shares_traded;
         userPortfolio.last_transaction = Math.max(userPortfolio.last_transaction, holding.last_transaction);
-        userPortfolio.fees_paid += holding.fees_paid;
-        userPortfolio.fines_paid += holding.fines_paid;
         userPortfolio.profit += holding.profit;
 
         if (changeSinceMs !== undefined) {

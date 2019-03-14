@@ -10,17 +10,5 @@ exports = function(changeEvent) {
       text: context.functions.execute('slackRender', 'trade', trade),
     },
     encodeBodyAsJSON: true,
-  }).then(() => {
-    const {crime} = trade;
-    if (crime) {
-      return slack.post({
-        url: SLACK_EMOTRADE_CHANNEL_URL,
-        body: {
-          text: context.functions.execute('slackRender', 'crimeAlert', trade),
-        },
-        encodeBodyAsJSON: true,
-      });
-    }
-    return true;
   });
 };

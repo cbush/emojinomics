@@ -5,9 +5,6 @@
         "GAIN_PER_REACT": {
             "$numberDouble": "0.39"
         },
-        "INSIDER_TRADING_THRESHOLD": {
-            "$numberDouble": "1.5"
-        },
         "REACTS_CONSIDERED_IN_PRICE": {
             "$numberInt": "5000"
         }

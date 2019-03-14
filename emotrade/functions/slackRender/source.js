@@ -135,23 +135,6 @@ function renderEmojiCountAtPrice({
   ].join(' ');
 }
 
-function renderFee(f) {
-  return `:money_mouth_face: ${renderChucklebucks(f)}`;
-}
-
-function renderCrimeRisk(risk) {
-  if (risk === 0) {
-    return ':innocent:';
-  }
-  const display = [
-    ':sleuth_or_spy:',
-  ];
-  for (let i = risk; i > 0; i -= 0.25) {
-    display.push(':warning:');
-  }
-  return display.join('');
-}
-
 function renderHolding(h) {
   return [
     renderEmojiCountAtPrice({emoji: h.emoji, count: h.count, price: h.price}),
@@ -159,8 +142,6 @@ function renderHolding(h) {
     `${h.portfolio_percent.toFixed(1)}%`,
     '|',
     `:book: ${renderChucklebucks(h.book_value)}`,
-    '|',
-    renderCrimeRisk(h.crime_risk),
   ].join(' ');
 }
 
@@ -170,7 +151,7 @@ function renderHoldings(h) {
 
 function renderTrade(t) {
   const {
-    emoji, count, fee,
+    emoji, count
   } = t;
   const action = count > 0 ? 'BUY' : 'SELL';
   let profit;
@@ -185,14 +166,13 @@ function renderTrade(t) {
     renderPseudonymizedUser(t.user_id),
     `*${action}*`,
     renderEmojiCountAtPrice({emoji, count: Math.abs(count), price: t.buy_price}),
-    `- ${renderFee(fee)}`,
     profit,
   ].join(' ');
 }
 
 function renderPortfolio(p) {
   const {
-    cash, fees_paid, fines_paid, profit,
+    cash, profit,
   } = p;
   const holdingTexts = renderHoldings(p.holdings);
   const portfolioText = holdingTexts.join('\n') || '<nothing yet>';
@@ -207,12 +187,6 @@ ${renderChucklebucks(profit)}
 
 *:moneybag: Chucklebucks cash holdings:*
 ${cashText}
-
-*:money_mouth_face: Unrecouped fees:*
-${renderChucklebucks(Math.max(0, fees_paid - Math.max(0, profit)))}
-
-*:female-police-officer: Fines paid:*
-${renderChucklebucks(fines_paid)}
 
 *:books: Positions:*
 ${portfolioText}
@@ -235,7 +209,6 @@ function renderPortfolioBrief(p) {
 }
 
 function renderTradeReceipt(r) {
-  const {fee} = r;
   let notes;
   if (r.notes.length !== 0) {
     notes = [
@@ -248,22 +221,15 @@ function renderTradeReceipt(r) {
     notes,
     `${r.action.toUpperCase()} ${renderEmojiCountAtPrice(r)}`,
     '',
-    `:money_mouth_face: *Fees:* ${renderChucklebucks(fee)}`,
-    `:heavy_minus_sign: *Subtotal:* ${renderChucklebucks(r.count * r.price - fee)}`,
     `:moneybag: *Cash:* ${renderChucklebucks(r.cash_before)} -> ${renderChucklebucks(r.cash_after)}`,
     `*Holding:* ${r.holding_count_before} -> ${r.holding_count_after}`,
   ].join('\n');
-}
-
-function renderCrimeAlert(trade) {
-  return `:sleuth_or_spy::female-police-officer: *CRIME ALERT:* Trader ${renderPseudonymizedUser(trade.user_id)} got fined for insider trading!`;
 }
 
 exports = function(type, model) {
   context.functions.execute('polyfills');
 
   const renderFunctions = {
-    crimeAlert: renderCrimeAlert,
     emoji: renderEmoji,
     holding: renderHolding,
     number: renderNumber,
