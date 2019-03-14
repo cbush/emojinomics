@@ -1,14 +1,17 @@
 let REACTS_CONSIDERED_IN_PRICE; // number of reacts considered in the price
 let GAIN_PER_REACT; // react power
+let BASE_PRICE;
 
 function priceAgg() {
   return {
-    $max: [{
-      $multiply: [
-        '$value',
-        GAIN_PER_REACT,
-      ]},
-      GAIN_PER_REACT,
+    $add: [
+      BASE_PRICE,
+      {
+        $multiply: [
+          '$value',
+          GAIN_PER_REACT,
+        ],
+      },
     ],
   };
 }
@@ -19,6 +22,7 @@ exports = async function({
   const rules = context.values.get('rules');
   GAIN_PER_REACT = rules.GAIN_PER_REACT;
   REACTS_CONSIDERED_IN_PRICE = rules.REACTS_CONSIDERED_IN_PRICE;
+  BASE_PRICE = rules.BASE_PRICE;
 
   const client = context.services.get('mongodb-atlas');
   const db = client.db('emojinomics');
