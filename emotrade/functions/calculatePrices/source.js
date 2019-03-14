@@ -3,8 +3,11 @@ let GAIN_PER_REACT; // react power
 
 function priceAgg() {
   return {
-    $multiply: [
-      '$count',
+    $max: [{
+      $multiply: [
+        '$value',
+        GAIN_PER_REACT,
+      ]},
       GAIN_PER_REACT,
     ],
   };
@@ -37,7 +40,7 @@ exports = async function({
     $group: {
       _id: '$emoji',
       count: {$sum: '$type'},
-      value: {$sum: '$value'},
+      value: {$sum: {$cond: {if: {$eq: ['$value', 0]}, then: 0, else: {$divide: ['$value', {$abs: '$value'}]}}}},
     },
   });
 

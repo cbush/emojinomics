@@ -17,16 +17,9 @@ exports = async function(payload) {
   const now = (event.event_ts && parseInt(event.event_ts * 1000, 10)) || new Date().getTime();
   const emoji = event.reaction.replace(/::.*$/, ''); // ignore skin tone variants
 
-  const type = event.type === 'reaction_removed' ? -1 : 1;
+  let type = event.type === 'reaction_removed' ? -1 : 1;
 
-  const powersByEmoji = await context.functions.execute('getReactPowersByEmoji', {emojis: [emoji]});
-  const power = powersByEmoji[emoji];
-
-  if (power === undefined) {
-    throw new Error(`Power for emoji ${emoji} undefined!`);
-  }
-
-  let value = Math.round(type * power.value * 1000) / 1000;
+  let value = type;
 
   // Ignore events from the same user for the same reaction within the last 5 minutes.
   const ignoreDuration = 5 * 60 * 1000;
