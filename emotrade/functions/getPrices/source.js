@@ -3,6 +3,7 @@ exports = function({
   emojis,
   $sort,
   $limit,
+  skip,
 }) {
   // TODO: Eventually replace with prices snapshot?
   return context.functions.execute('calculatePrices', {
@@ -10,5 +11,6 @@ exports = function({
     emojis,
     $sort,
     $limit,
+    skip,
   });
 };

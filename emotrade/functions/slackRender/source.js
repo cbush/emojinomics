@@ -105,20 +105,20 @@ function renderReactPower(p) {
 }
 
 function renderPrice(p) {
-  const {change, change_percent} = p;
+  const {change, change_percent_abs} = p;
   const change_arrow = change >= 0.01 ? ':arrow_up_small::chart_with_upwards_trend:' : change > -0.01 ? ':arrow_right::equal:' : ':arrow_down_small::chart_with_downwards_trend:';
-  const change_spice = change_percent > 50
+  const change_spice = change_percent_abs > 50
     ? ':rotating_light:'
-    : change_percent > 25
+    : change_percent_abs > 25
       ? ':fire:'
-      : change_percent > 10
+      : change_percent_abs > 10
         ? ':hot_pepper:' : undefined;
   return [
     `${renderEmoji(p.emoji)}`,
     `${change_arrow}${change_spice || ''}`,
     `\$${p.price.toFixed(2)}`,
     `(${p.change_sign}${p.change_abs.toFixed(2)})`,
-    `(${p.change_sign}${p.change_percent.toFixed(1)}%)`,
+    `(${p.change_sign}${p.change_percent_abs.toFixed(1)}%)`,
     `${p.count} (${((p.count / 3000) * 100).toFixed(2)}%)`,
   ].join(' ');
 }

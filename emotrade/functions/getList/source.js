@@ -1,10 +1,8 @@
-exports = ({
+exports = function({
   team_id,
   name,
   limit = 10,
-  whenMs = new Date().getTime(),
-  changeSinceMs,
-}) => new Promise((resolve, reject) => {
+}) {
   let $sort;
   switch (name) {
   case 'top':
@@ -25,16 +23,10 @@ exports = ({
   }
   }
   const $limit = limit || 10;
-  changeSinceMs = changeSinceMs || (whenMs - (name === 'hot' ? 1 : 3) * 24 * 60 * 60 * 1000);
   return context.functions.execute('getPrices', {
-    team_id, $sort, $limit, whenMs, changeSinceMs,
-  })
-    .then((prices) => {
-      const list = {
-        name,
-        prices,
-      };
-      return resolve(list);
-    })
-    .catch(reject);
-});
+    team_id, $sort, $limit,
+  }).then(prices => ({
+    name,
+    prices,
+  }));
+};
