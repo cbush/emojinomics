@@ -1,5 +1,3 @@
-const PER_TRADE_FEE_BUCKS = 5;
-
 function getInsiderTradingFine(trade) {
   const crime_probability = context.functions.execute('detectInsiderTrading', {
     ...trade,
@@ -31,7 +29,6 @@ async function makeTrade(trade) {
     team_id,
     app_id,
     emoji,
-    fee,
     count,
     price,
     book_value,
@@ -46,7 +43,7 @@ async function makeTrade(trade) {
   const holding_count_delta = is_buy ? count : -count;
 
   // change in chucklebucks cash holdings
-  const cash_delta = -holding_count_delta * price - fee;
+  const cash_delta = -holding_count_delta * price;
 
   // change in holding's book value
   const book_value_delta = count * (is_buy ? price : -book_value);
@@ -67,7 +64,6 @@ async function makeTrade(trade) {
     buy_price: price, // unit price paid
     cash_delta,
     book_value_delta,
-    fee,
     ts: new Date().getTime(),
   };
 
@@ -80,11 +76,9 @@ async function makeTrade(trade) {
     notes.push(':sleuth_or_spy::female-police-officer: The SEC suspects you of insider trading and fines away all of your profit!');
   }
 
-  if (is_buy) {
-    trade.profit = -fee;
-  } else {
+  if (!is_buy) {
     const bought_at = count * book_value;
-    const sold_for = count * price - fee;
+    const sold_for = count * price;
     trade.profit = sold_for - bought_at - fine;
   }
   document.profit = trade.profit;
@@ -105,10 +99,10 @@ async function buy(trade) {
   } = trade;
   let count = trade.requested_count;
 
-  const can_afford = Math.max(0, Math.floor((cash_before - PER_TRADE_FEE_BUCKS) / price));
+  const can_afford = Math.max(0, Math.floor(cash_before / price));
 
   if (can_afford === 0) {
-    notes.push(`You can't afford any :${emoji}: *${emoji}*: @ $${price.toFixed(2)} (with fee of $${PER_TRADE_FEE_BUCKS.toFixed(2)}) exceeds available cash ($${cash_before.toFixed(2)}).`);
+    notes.push(`You can't afford any :${emoji}: *${emoji}*: @ $${price.toFixed(2)} exceeds available cash ($${cash_before.toFixed(2)}).`);
     count = 0;
   } else if (count === 'all') {
     notes.push(`Buy all: you can afford ${can_afford}.`);
@@ -119,7 +113,6 @@ async function buy(trade) {
   }
 
   trade.count = count;
-  trade.fee = PER_TRADE_FEE_BUCKS;
   return makeTrade(trade);
 }
 
@@ -139,14 +132,7 @@ async function sell(trade) {
     count = can_sell;
   }
 
-  const cash_after_sale = trade.cash_before + count * trade.price - PER_TRADE_FEE_BUCKS;
-  if (cash_after_sale < 0) {
-    count = 0;
-    notes.push(`You can't afford the trade fee of $${PER_TRADE_FEE_BUCKS.toFixed(2)}.`);
-  }
-
   trade.count = count;
-  trade.fee = PER_TRADE_FEE_BUCKS;
 
   return makeTrade(trade);
 }

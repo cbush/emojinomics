@@ -1,7 +1,5 @@
 let client;
-let db;
 let TOKEN;
-let SLACK_EMOTRADE_CHANNEL_URL;
 
 function isValidSaleCount(str) {
   return str === 'all' || /^([1-9]\d*)$/.test(str);
@@ -9,10 +7,6 @@ function isValidSaleCount(str) {
 
 function renderPrice(model) {
   return context.functions.execute('slackRender', 'price', model);
-}
-
-function renderReactPower(model) {
-  return context.functions.execute('slackRender', 'reactPower', model);
 }
 
 function renderPortfolio(model) {
@@ -187,21 +181,6 @@ function price({team_id, query, command, args}) {
     });
 }
 
-async function react_power({query, command, args}) {
-  if (args.length === 0) {
-    return {
-      type: 'ephemeral',
-      text:
-`*Usage*: ${query.command} ${command} <emoji...>`,
-    };
-  }
-  const powersByEmoji = await context.functions.execute('getReactPowersByEmoji', {emojis: args.map(getEmojiName)});
-  return {
-    type: 'ephemeral',
-    text: Object.values(powersByEmoji).map(renderReactPower).join('\n'),
-  };
-}
-
 function usage(command) {
   return {
     response_type: 'ephemeral',
@@ -225,7 +204,6 @@ exports = function(payload) {
 
   const slack = context.values.get('slack');
   TOKEN = slack.token;
-  SLACK_EMOTRADE_CHANNEL_URL = slack.emotrade_channel_url;
 
   context.values.get('token');
   const {query} = payload;
@@ -254,7 +232,6 @@ exports = function(payload) {
   case 'price': return price(data);
   case 'buy': return buy(data);
   case 'sell': return sell(data);
-  case 'react-power': return react_power(data);
   default: return usage(query.command);
   }
 };
