@@ -92,42 +92,54 @@ function renderNumber(n) {
 
 function renderChucklebucks(value) {
   const sign = value < 0 ? '-' : '';
-  return `${sign}\$${renderNumber(Math.abs(value).toFixed(2))}`;
+  return `${sign}$${renderNumber(Math.abs(value).toFixed(2))}`;
+}
+
+function renderChangeArrow({change}) {
+  if (change >= 0.01) {
+    return ':arrow_up_small::chart_with_upwards_trend:';
+  }
+  if (change > -0.01) {
+    return ':arrow_right::equal:';
+  }
+  return ':arrow_down_small::chart_with_downwards_trend:';
+}
+
+function renderChangeSpice({change_percent_abs}) {
+  if (change_percent_abs > 50) {
+    return ':rotating_light:';
+  }
+  if (change_percent_abs > 25) {
+    return ':fire:';
+  }
+  if (change_percent_abs > 10) {
+    return ':hot_pepper:';
+  }
+  return '';
 }
 
 function renderEmoji(emoji) {
-  const display_size = 12;
-  return `:${emoji}: \`${emoji.ellipsize(MAX_NAME_LENGTH).padEnd(MAX_NAME_LENGTH)}\``;
-}
-
-function renderReactPower(p) {
-  return `${renderEmoji(p.emoji)}: :fist: ${p.value}`;
+  return [
+    `:${emoji}:`,
+    `\`${emoji.ellipsize(MAX_NAME_LENGTH).padEnd(MAX_NAME_LENGTH)}\``,
+  ].join(' ');
 }
 
 function renderPrice(p) {
-  const {change, change_percent_abs} = p;
-  const change_arrow = change >= 0.01 ? ':arrow_up_small::chart_with_upwards_trend:' : change > -0.01 ? ':arrow_right::equal:' : ':arrow_down_small::chart_with_downwards_trend:';
-  const change_spice = change_percent_abs > 50
-    ? ':rotating_light:'
-    : change_percent_abs > 25
-      ? ':fire:'
-      : change_percent_abs > 10
-        ? ':hot_pepper:' : undefined;
   return [
     `${renderEmoji(p.emoji)}`,
-    `${change_arrow}${change_spice || ''}`,
-    `\$${p.price.toFixed(2)}`,
+    `${renderChangeArrow(p)}${renderChangeSpice(p)}`,
+    `$${p.price.toFixed(2)}`,
     `(${p.change_sign}${p.change_abs.toFixed(2)})`,
     `(${p.change_sign}${p.change_percent_abs.toFixed(1)}%)`,
-    `${p.count} (${((p.count / 3000) * 100).toFixed(2)}%)`,
   ].join(' ');
 }
 
 function renderEmojiCountAtPrice({
-  emoji, count, price,
+  emoji, count, price, change, change_percent_abs,
 }) {
   return [
-    renderEmoji(emoji),
+    renderEmoji(emoji) + (change !== undefined ? ` ${renderChangeArrow({change})}${renderChangeSpice({change_percent_abs})}` : ''),
     `x ${count}`,
     `@ ${renderChucklebucks(price)}`,
     '=',
@@ -135,13 +147,29 @@ function renderEmojiCountAtPrice({
   ].join(' ');
 }
 
+function renderProfit(profit) {
+  if (profit < 0) {
+    return `:money_with_wings:LOSS ${renderChucklebucks(profit)}`;
+  }
+  return `:moneybag:PROFIT ${renderChucklebucks(profit)}`;
+}
+
 function renderHolding(h) {
+  const profit = h.total_value - h.book_value;
+  let book;
+  if (profit > 0) {
+    book = 'green_book';
+  } else {
+    book = 'orange_book';
+  }
   return [
-    renderEmojiCountAtPrice({emoji: h.emoji, count: h.count, price: h.price}),
+    renderEmojiCountAtPrice({
+      ...h,
+    }),
+    '|',
+    `:${book}: ${renderChucklebucks(h.book_value)}`,
     '|',
     `${h.portfolio_percent.toFixed(1)}%`,
-    '|',
-    `:book: ${renderChucklebucks(h.book_value)}`,
   ].join(' ');
 }
 
@@ -151,16 +179,12 @@ function renderHoldings(h) {
 
 function renderTrade(t) {
   const {
-    emoji, count
+    emoji, count,
   } = t;
   const action = count > 0 ? 'BUY' : 'SELL';
   let profit;
   if (action === 'SELL') {
-    if (t.profit < 0) {
-      profit = `(:money_with_wings: LOSS ${renderChucklebucks(t.profit)})`;
-    } else {
-      profit = `(:moneybag: PROFIT ${renderChucklebucks(t.profit)})`;
-    }
+    profit = `(${renderProfit(t.profit)})`;
   }
   return [
     renderPseudonymizedUser(t.user_id),
@@ -236,7 +260,6 @@ exports = function(type, model) {
     portfolio: renderPortfolio,
     portfolioBrief: renderPortfolioBrief,
     price: renderPrice,
-    reactPower: renderReactPower,
     trade: renderTrade,
     tradeReceipt: renderTradeReceipt,
   };

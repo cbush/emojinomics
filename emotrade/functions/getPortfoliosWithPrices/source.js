@@ -16,6 +16,7 @@ function applyPricesToHoldings(holdings, valuations) {
       holding.previous_price = valuation.previous_price;
       holding.previous_total_value = valuation.previous_price * holding.previous_count;
     }
+    holding.valuation = valuation;
   });
 }
 
