@@ -37,7 +37,7 @@ function Profile(user_id, reactor, reactee) {
   this.top_received = [];
   this.top_fans = [];
 
-  const limit = 10;
+  const limit = 5;
 
   if (reactor !== undefined) {
     let result = count_and_sort_entries(reactor.emoji_given_counts, 'emoji');

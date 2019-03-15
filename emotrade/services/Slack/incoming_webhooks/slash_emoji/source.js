@@ -5,6 +5,10 @@ function isValidSaleCount(str) {
   return str === 'all' || /^([1-9]\d*)$/.test(str);
 }
 
+function renderName(user_id, users_by_id) {
+  return context.functions.execute('slackRender', 'name', user_id, users_by_id);
+}
+
 function renderPrice(model) {
   return context.functions.execute('slackRender', 'price', model);
 }
@@ -17,18 +21,16 @@ function renderPortfolioBrief(model) {
   return context.functions.execute('slackRender', 'portfolioBrief', model);
 }
 
+function renderReactProfile(model, users_by_id) {
+  return context.functions.execute('slackRender', 'reactProfile', model, users_by_id);
+}
+
+function renderReactProfileBrief(model, users_by_id) {
+  return context.functions.execute('slackRender', 'reactProfileBrief', model, users_by_id);
+}
+
 function renderTradeReceipt(model) {
   return context.functions.execute('slackRender', 'tradeReceipt', model);
-}
-
-function getCurrentPrices(args) {
-  const now = new Date().getTime();
-  args.whenMs = now;
-  return context.functions.execute('getPrices', args);
-}
-
-function getPortfolio(user_id) {
-  return context.functions.execute('getPortfolio', user_id);
 }
 
 function getPortfoliosWithPrices({team_id, users}) {
@@ -140,6 +142,32 @@ ${rankingsText}`,
     });
 }
 
+async function react_profile({team_id, query}) {
+  const {user_id} = query;
+  const profiles_by_id = await context.functions.execute('getReactProfiles', {users: [user_id], team_id});
+  const users_by_id = await context.functions.execute('getUsers', {token: TOKEN});
+  return {
+    response_type: 'in_channel',
+    text: renderReactProfile(profiles_by_id[user_id], users_by_id),
+  };
+}
+
+async function react_profiles({team_id}) {
+  const profiles_by_id = await context.functions.execute('getReactProfiles', {team_id});
+  const users_by_id = await context.functions.execute('getUsers', {token: TOKEN});
+  const profiles = Object.values(profiles_by_id);
+  profiles.sort((a, b) => {
+    const a_name = renderName(a.user_id, users_by_id);
+    const b_name = renderName(b.user_id, users_by_id);
+    return a_name < b_name ? -1 : 1;
+  });
+  return {
+    type: 'ephemeral',
+    text: `*Profiles:*
+${profiles.map(profile => renderReactProfileBrief(profile, users_by_id)).join('\n')}`,
+  };
+}
+
 function list({team_id, args}) {
   return context.functions.execute('getList', {team_id, name: args[0]})
     .then((list) => {
@@ -194,6 +222,8 @@ function usage(command) {
 \`price \` See emoji price
 \`buy   \` Buy emoji
 \`sell  \` Sell emoji
+\`reacts\` See your react profile
+\`team-reacts\` See team react profiles
 \`help  \` See this message
 `,
   };
@@ -232,6 +262,8 @@ exports = function(payload) {
   case 'price': return price(data);
   case 'buy': return buy(data);
   case 'sell': return sell(data);
+  case 'reacts': return react_profile(data);
+  case 'team-reacts': return react_profiles(data);
   default: return usage(query.command);
   }
 };

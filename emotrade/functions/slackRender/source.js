@@ -86,6 +86,11 @@ function renderPseudonymizedUser(id) {
   return `:${icons[hash(id) % icons.length]}:`;
 }
 
+function renderName(user_id, users_by_id) {
+  const user = users_by_id[user_id];
+  return (user && user.profile && (user.profile.display_name || user.real_name)) || renderPseudonymizedUser(user_id);
+}
+
 function renderNumber(n) {
   return commafy(n);
 }
@@ -232,6 +237,48 @@ function renderPortfolioBrief(p) {
   ].join(' ');
 }
 
+function renderReactEntry(entry) {
+  return `\`${entry.count.toString().padStart(5)}\` ${renderEmoji(entry.emoji)}`;
+}
+
+function renderReactProfile(p, users_by_id) {
+  const name = renderName(p.user_id, users_by_id);
+  return [
+    `*${name}*`,
+    `*Gave:* ${p.total_given}`,
+    p.top_given.map(renderReactEntry).join('\n'),
+    '',
+    `*Received:* ${p.total_received}`,
+    p.top_received.map(renderReactEntry).join('\n'),
+    '',
+    '*Top fans:*',
+    p.top_fans.map(entry => `\`${entry.count.toString().padStart(5)}\` ${renderName(entry.user_id, users_by_id)}`).join('\n'),
+    '',
+    '*Top crushes:*',
+    p.top_crushes.map(entry => `\`${entry.count.toString().padStart(5)}\` ${renderName(entry.user_id, users_by_id)}`).join('\n'),
+  ].join('\n');
+}
+
+function renderReactProfileBrief(p, users_by_id) {
+  const name = renderName(p.user_id, users_by_id);
+  const result = [
+    `*${name}*`,
+    `| :outbox_tray: ${p.total_given}`,
+    p.top_given.map(entry => `:${entry.emoji}:`).join(' '),
+    `| :inbox_tray: ${p.total_received}`,
+    p.top_received.map(entry => `:${entry.emoji}:`).join(' '),
+  ];
+  if (p.top_fans.length > 0) {
+    result.push('\n`     Fans:`');
+    result.push(p.top_fans.map(entry => `${renderName(entry.user_id, users_by_id).ellipsize(10)} (${entry.count})`).join(', '));
+  }
+  if (p.top_crushes.length > 0) {
+    result.push('\n`  Crushes:`');
+    result.push(p.top_crushes.map(entry => `${renderName(entry.user_id, users_by_id).ellipsize(10)} (${entry.count})`).join(', '));
+  }
+  return result.join(' ');
+}
+
 function renderTradeReceipt(r) {
   let notes;
   if (r.notes.length !== 0) {
@@ -250,18 +297,21 @@ function renderTradeReceipt(r) {
   ].join('\n');
 }
 
-exports = function(type, model) {
+exports = function(type, model, users_by_id) {
   context.functions.execute('polyfills');
 
   const renderFunctions = {
     emoji: renderEmoji,
     holding: renderHolding,
+    name: renderName,
     number: renderNumber,
     portfolio: renderPortfolio,
     portfolioBrief: renderPortfolioBrief,
     price: renderPrice,
+    reactProfile: renderReactProfile,
+    reactProfileBrief: renderReactProfileBrief,
     trade: renderTrade,
     tradeReceipt: renderTradeReceipt,
   };
-  return renderFunctions[type](model);
+  return renderFunctions[type](model, users_by_id);
 };
