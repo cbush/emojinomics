@@ -1,8 +1,8 @@
-exports = function({
+exports = ({
   team_id,
   name,
   limit = 10,
-}) {
+}) => new Promise((resolve, reject) => {
   let $sort;
   switch (name) {
   case 'top':
@@ -25,8 +25,8 @@ exports = function({
   const $limit = limit || 10;
   return context.functions.execute('getPrices', {
     team_id, $sort, $limit,
-  }).then(prices => ({
+  }).then(prices => resolve({
     name,
     prices,
   }));
-};
+});
