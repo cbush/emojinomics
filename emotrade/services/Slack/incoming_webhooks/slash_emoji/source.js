@@ -142,12 +142,12 @@ ${rankingsText}`,
     });
 }
 
-async function react_profile({team_id, query}) {
+async function react_profile({team_id, query, public_flag}) {
   const {user_id} = query;
   const profiles_by_id = await context.functions.execute('getReactProfiles', {users: [user_id], team_id});
   const users_by_id = await context.functions.execute('getUsers', {token: TOKEN});
   return {
-    response_type: 'in_channel',
+    response_type: public_flag ? 'in_channel' : 'ephemeral',
     text: renderReactProfile(profiles_by_id[user_id], users_by_id),
   };
 }
@@ -238,7 +238,7 @@ exports = function(payload) {
   context.values.get('token');
   const {query} = payload;
   const {text} = query;
-  const args = text.split(' ').filter(price => price);
+  let args = text.split(' ').filter(price => price);
   if ((args.length === 0) || args[0] === 'help') {
     return usage(query.command);
   }
@@ -248,12 +248,22 @@ exports = function(payload) {
 
   const {team_id} = query;
 
+  let public_flag = args.indexOf('--public');
+  if (public_flag === -1) {
+    public_flag = undefined;
+  } else {
+    args.splice(public_flag, 1);
+    public_flag = true;
+  }
+
   const command = args.shift();
+
   const data = {
     query,
     command,
     args,
     team_id,
+    public_flag,
   };
   switch (command) {
   case 'me': return me(data);
