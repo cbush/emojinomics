@@ -32,7 +32,7 @@ exports = async function(payload) {
     emoji,
     type,
   });
-  if (lastReact !== undefined) {
+  if (lastReact !== null) {
     value = 0;
   }
   return collection.insertOne({
